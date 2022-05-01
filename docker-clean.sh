@@ -14,6 +14,15 @@ docker images --quiet --filter="reference=pleo-antaeus:*" | \
    docker rmi -f "$image"
  done
 
+# Remove all cron images.
+docker stop $(docker ps --filter=network=antaeus-network --quiet)
+docker images --quiet --filter="reference=cron:*" | \
+ while read image; do
+   docker rmi -f "$image"
+ done
+
+docker network rm antaeus-network
+
 # Optionally reclaim space of dangling images.
 echo 'Run "docker system prune" to clear disk space?'
 docker system prune
