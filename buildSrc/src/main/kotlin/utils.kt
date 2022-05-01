@@ -1,4 +1,3 @@
-
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.kotlin
@@ -13,6 +12,10 @@ fun Project.kotlinProject() {
         // Kotlin libs
         "implementation"(kotlin("stdlib"))
 
+        // reactor
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.4.0")
+        "implementation"("org.jetbrains.kotlinx:kotlinx-coroutines-reactor:1.4.0")
+
         // Logging
         "implementation"("org.slf4j:slf4j-simple:1.7.30")
         "implementation"("io.github.microutils:kotlin-logging:1.7.8")
@@ -24,6 +27,12 @@ fun Project.kotlinProject() {
         "testImplementation"("org.junit.jupiter:junit-jupiter-api:$junitVersion")
         "testImplementation"("org.junit.jupiter:junit-jupiter-params:$junitVersion")
         "runtime"("org.junit.jupiter:junit-jupiter-engine:$junitVersion")
+
+        // assertj
+        "testImplementation"("org.assertj:assertj-core:3.22.0")
+
+        //reactor test
+        "testImplementation"("io.projectreactor:reactor-test:3.2.5.RELEASE")
     }
 }
 
