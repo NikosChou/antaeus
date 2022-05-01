@@ -7,16 +7,12 @@
 
 package io.pleo.antaeus.data
 
-import io.pleo.antaeus.models.Currency
-import io.pleo.antaeus.models.Customer
-import io.pleo.antaeus.models.Invoice
-import io.pleo.antaeus.models.InvoiceStatus
-import io.pleo.antaeus.models.Money
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.select
-import org.jetbrains.exposed.sql.selectAll
+import io.pleo.antaeus.models.*
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import reactor.core.publisher.Flux
+import reactor.core.publisher.Mono
+import reactor.core.scheduler.Schedulers
 
 class AntaeusDal(private val db: Database) {
     fun fetchInvoice(id: Int): Invoice? {
@@ -38,7 +34,45 @@ class AntaeusDal(private val db: Database) {
         }
     }
 
-    fun createInvoice(amount: Money, customer: Customer, status: InvoiceStatus = InvoiceStatus.PENDING): Invoice? {
+    fun fetchPendingInvoices(): Flux<Invoice> {
+        return Flux.create<Invoice> {
+            runCatching {
+                transaction(db) {
+                    InvoiceTable
+                        .select { InvoiceTable.status.eq(InvoiceStatus.PENDING.name) }
+                        .map { it.toInvoice() }
+                        .forEach { invoice -> it.next(invoice) }
+                }
+                it.complete()
+            }.onFailure { error ->
+                it.error(error)
+            }
+        }.publishOn(Schedulers.elastic())
+    }
+
+    fun updateInvoiceStatus(invoice: Invoice): Mono<Invoice> {
+        return Mono.fromCallable<Invoice> {
+            transaction(db) {
+                InvoiceTable
+                    .update({ InvoiceTable.id.eq(invoice.id) }) { table ->
+                        table[this.value] = invoice.amount.value
+                        table[this.currency] = invoice.amount.currency.toString()
+                        table[this.status] = invoice.status.name
+                        table[this.statusMessage] = invoice.statusMessage
+                        table[this.customerId] = invoice.customerId
+                    }
+
+                fetchInvoice(invoice.id)
+            }
+        }.publishOn(Schedulers.elastic())
+    }
+
+    fun createInvoice(
+        amount: Money,
+        customer: Customer,
+        status: InvoiceStatus = InvoiceStatus.PENDING,
+        statusMessage: String? = null
+    ): Invoice? {
         val id = transaction(db) {
             // Insert the invoice and returns its new id.
             InvoiceTable
@@ -46,6 +80,7 @@ class AntaeusDal(private val db: Database) {
                     it[this.value] = amount.value
                     it[this.currency] = amount.currency.toString()
                     it[this.status] = status.toString()
+                    it[this.statusMessage] = statusMessage
                     it[this.customerId] = customer.id
                 } get InvoiceTable.id
         }
