@@ -86,3 +86,12 @@ The code given is structured as follows. Feel free however to modify the structu
 * [Sqlite3](https://sqlite.org/index.html) - Database storage engine
 
 Happy hacking 😁!
+
+# Implementation Notes
+* I really like the project reactor, so I added the kotlinx-reactor dependencies
+* The same for the assertj 
+* Tried to work only with Flux & Mono, so I can easily recover from Exceptions
+* The Billing service is called from a cron job running in a different docker container
+* The invoice statuses are now holding 2 more cases IN_PROGRESS & FAILURE
+* The invoice contains new STATUS_MESSAGE field
+* This is a quick solution, I'll create a new Table holding all information about billing date, status and exception message
