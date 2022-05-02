@@ -11,7 +11,7 @@ import setupInitialData
 import java.sql.Connection
 
 abstract class AbstractBaseTest {
-    val tables = arrayOf(InvoiceTable, CustomerTable)
+    val tables = arrayOf(InvoiceTable, CustomerTable, BillingTable)
     lateinit var sut: AntaeusDal
     lateinit var db: Database
 

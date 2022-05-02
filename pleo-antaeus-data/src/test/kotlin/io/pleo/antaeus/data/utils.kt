@@ -13,15 +13,19 @@ internal fun setupInitialData(dal: AntaeusDal) {
     }
 
     customers.forEach { customer ->
-        (1..10).forEach {
-            dal.createInvoice(
+        (1..10).forEach { i ->
+            val invoice = dal.createInvoice(
                 amount = Money(
                     value = BigDecimal(Random.nextDouble(10.0, 500.0)),
                     currency = customer.currency
                 ),
                 customer = customer,
-                status = if (it == 1) InvoiceStatus.PENDING else InvoiceStatus.PAID
+                status = if (i == 1) InvoiceStatus.PENDING else InvoiceStatus.PAID
             )
+
+            if (invoice?.status == InvoiceStatus.PENDING) {
+                dal.createBilling(invoice, invoice.status, invoice.statusMessage).block()
+            }
         }
     }
 }

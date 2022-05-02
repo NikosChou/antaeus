@@ -88,6 +88,59 @@ class AntaeusDal(private val db: Database) {
         return fetchInvoice(id)
     }
 
+    fun fetchBilling(id: Int): Mono<Billing> {
+        return Mono.defer {
+            transaction(db) {
+                // Returns the first invoice with matching id.
+                BillingTable
+                    .select { BillingTable.id.eq(id) }
+                    .firstOrNull()
+                    ?.toBilling()
+            }?.let { billing -> Mono.just(billing) } ?: Mono.empty()
+
+        }
+    }
+
+
+    fun fetchBillings(): Flux<Billing> {
+        return Flux.create { sink ->
+            transaction(db) {
+                BillingTable
+                    .selectAll()
+                    .map { it.toBilling() }
+            }.forEach { sink.next(it) }
+            sink.complete()
+        }
+    }
+
+    fun createBilling(
+        invoice: Invoice, status: InvoiceStatus = InvoiceStatus.PENDING, statusMessage: String? = null
+    ): Mono<Billing> {
+        return Mono.fromCallable {
+            transaction(db) {
+                // Insert the invoice and returns its new id.
+                BillingTable
+                    .insert {
+                        it[this.invoiceId] = invoice.id
+                        it[this.status] = status.toString()
+                        it[this.statusMessage] = statusMessage
+                    } get BillingTable.id
+            }
+        }.flatMap { fetchBilling(it) }
+    }
+
+    fun updateBilling(billing: Billing): Mono<Billing> {
+        return Mono.fromCallable {
+            transaction(db) {
+                BillingTable
+                    .update({ BillingTable.id.eq(billing.id) }) {
+                        it[this.status] = billing.status.name
+                        it[this.statusMessage] = billing.statusMessage
+                    }
+            }
+        }.flatMap { fetchBilling(billing.id) }
+    }
+
     fun fetchCustomer(id: Int): Customer? {
         return transaction(db) {
             CustomerTable
