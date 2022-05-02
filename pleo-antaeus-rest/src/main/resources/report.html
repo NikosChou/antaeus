@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <title>Good Thymes Virtual Grocery</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+</head>
+
+<body>
+    <table>
+        <tr>
+            <th>Id</th>
+            <th>Invoice id</th>
+            <th>Status</th>
+            <th>Status Message</th>
+            <th>Charging date</th>
+        </tr>
+
+        <tr th:each="billing : ${billings}">
+            <td th:text="${billing.id}">id</td>
+            <td th:text="${billing.invoiceId}">Invoice id</td>
+            <td th:text="${billing.status}">Status</td>
+            <td th:text="${billing.statusMessage}">Status Message</td>
+            <td th:text="${billing.chargingDate}">Charging date</td>
+        </tr>
+    </table>
+</body>
+
+</html>

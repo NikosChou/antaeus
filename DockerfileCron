@@ -4,7 +4,7 @@ FROM ubuntu:22.04
 RUN apt-get update && apt-get install cron -y && apt-get install httpie -y
 
 # Add the cron job, every month At 00:00 on day-of-month 27
-RUN crontab -l | { cat; echo "0 0 27 * * http POST pleo-antaeus:7000/rest/v1/invoices/collect >> ~/output.json"; } | crontab -
+RUN crontab -l | { cat; echo "0 0 27 * * http POST pleo-antaeus:7000/rest/v1/billing >> ~/report.html"; } | crontab -
 
 # When the container starts: build, test and run the app.
 

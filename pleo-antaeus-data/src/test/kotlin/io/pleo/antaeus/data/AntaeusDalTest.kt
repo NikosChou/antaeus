@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import reactor.test.StepVerifier
 import java.time.LocalDate
+import java.time.YearMonth
 
 class AntaeusDalTest : AbstractBaseTest() {
 
@@ -134,6 +135,27 @@ class AntaeusDalTest : AbstractBaseTest() {
             StepVerifier
                 .create(sut.fetchBillings())
                 .expectNextCount(count.toLong())
+                .expectComplete()
+                .verify()
+        }
+
+        @Test
+        fun `fetchBillingsByBillingDate should return empty list`() {
+            val currentDate = LocalDate.now()
+            val previousMonth = currentDate.minusMonths(1)
+            sut.fetchBillings().flatMap { sut.updateBilling(it.copy(chargingDate = previousMonth)) }.blockLast()
+
+            StepVerifier.create(sut.fetchBillingsByBillingDate(YearMonth.from(currentDate)))
+                .expectComplete()
+                .verify()
+        }
+
+        @Test
+        fun `fetchBillingsByBillingDate should return current months`() {
+            val count = sut.fetchBillings().count().block()!!
+
+            StepVerifier.create(sut.fetchBillingsByBillingDate(YearMonth.now()))
+                .expectNextCount(count)
                 .expectComplete()
                 .verify()
         }

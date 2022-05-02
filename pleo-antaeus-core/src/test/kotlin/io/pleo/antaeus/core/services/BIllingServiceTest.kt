@@ -110,6 +110,18 @@ class BIllingServiceTest {
             .verifyComplete()
     }
 
+    @Test
+    fun `should fetch billings for specific month`() {
+        val billing = Billing(1, 1, BillingStatus.IN_PROGRESS, LocalDate.now(), null)
+
+        every { antaeusDal.fetchBillingsByBillingDate(any()) }.returns(Flux.just(billing))
+
+        StepVerifier
+            .create(this.sut.fetchBillingsForMonth(1, 1))
+            .expectNextCount(1)
+            .verifyComplete()
+    }
+
     companion object {
         @JvmStatic
         fun failureProvider(): Stream<Arguments> {

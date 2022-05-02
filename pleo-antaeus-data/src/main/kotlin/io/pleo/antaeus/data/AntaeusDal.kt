@@ -10,9 +10,11 @@ package io.pleo.antaeus.data
 import io.pleo.antaeus.models.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.joda.time.LocalTime
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.core.scheduler.Schedulers
+import java.time.YearMonth
 
 class AntaeusDal(private val db: Database) {
     fun fetchInvoice(id: Int): Invoice? {
@@ -82,11 +84,21 @@ class AntaeusDal(private val db: Database) {
         }
     }
 
-
     fun fetchBillings(): Flux<Billing> {
         return Flux.create { sink ->
             transaction(db) {
                 BillingTable.selectAll().map { it.toBilling() }
+            }.forEach { sink.next(it) }
+            sink.complete()
+        }
+    }
+
+    fun fetchBillingsByBillingDate(yearMonth: YearMonth): Flux<Billing> {
+        return Flux.create { sink ->
+            transaction(db) {
+                val from = toJodaTime(yearMonth.atDay(1)).toDateTimeAtStartOfDay()
+                val to = toJodaTime(yearMonth.atEndOfMonth()).toDateTime(LocalTime.MIDNIGHT)
+                BillingTable.select { BillingTable.chargingDate.between(from, to) }.map { it.toBilling() }
             }.forEach { sink.next(it) }
             sink.complete()
         }
@@ -98,7 +110,7 @@ class AntaeusDal(private val db: Database) {
         return Mono.fromCallable {
             transaction(db) {
                 // Insert the invoice and returns its new id.
-                BillingTable.insertIgnore {
+                BillingTable.insert {
                     it[this.invoiceId] = invoice.id
                     it[this.status] = status.toString()
                     it[this.statusMessage] = statusMessage
@@ -113,6 +125,7 @@ class AntaeusDal(private val db: Database) {
         return Mono.fromCallable {
             transaction(db) {
                 BillingTable.update({ BillingTable.id.eq(billing.id) }) {
+                    it[this.chargingDate] = toJodaTime(billing.chargingDate).toDateTimeAtStartOfDay()
                     it[this.status] = billing.status.name
                     it[this.statusMessage] = billing.statusMessage
                 }

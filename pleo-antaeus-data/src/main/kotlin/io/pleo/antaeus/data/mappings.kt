@@ -35,3 +35,7 @@ fun ResultRow.toCustomer(): Customer = Customer(
 fun toJavaTime(time: LocalDate): java.time.LocalDate {
     return java.time.LocalDate.of(time.year, time.monthOfYear, time.dayOfMonth)
 }
+
+fun toJodaTime(time: java.time.LocalDate): LocalDate {
+    return LocalDate(time.year, time.monthValue, time.dayOfMonth)
+}

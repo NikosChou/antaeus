@@ -9,11 +9,17 @@ import io.pleo.antaeus.models.Invoice
 import mu.KotlinLogging
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
+import java.time.Year
+import java.time.YearMonth
 
 class BillingService(
     private val dal: AntaeusDal, private val paymentProvider: PaymentProvider
 ) {
     private val logger = KotlinLogging.logger { BillingService::class.java.name }
+
+    fun fetchBillingsForMonth(year: Int = Year.now().value, month: Int = YearMonth.now().monthValue): Flux<Billing> {
+        return this.dal.fetchBillingsByBillingDate(YearMonth.of(year, month))
+    }
 
     fun scheduleTransactionsManual(): Flux<Billing> {
         return this.dal.fetchPendingInvoices()

@@ -62,16 +62,25 @@ class AntaeusRest(
                             it.json(invoiceService.fetchAll())
                         }
 
-                        path("collect") {
-                            post {
-                                billingService.scheduleTransactionsManual().collectList().block()
-                                    ?.let { it1 -> it.json(it1) }
-                            }
-                        }
-
                         // URL: /rest/v1/invoices/{:id}
                         get(":id") {
                             it.json(invoiceService.fetch(it.pathParam("id").toInt()))
+                        }
+                    }
+                    path("billing") {
+                        get {
+                            billingService.fetchBillingsForMonth(
+                                it.queryParam("y", "1")?.toInt()!!,
+                                it.queryParam("m", "1")?.toInt()!!
+                            ).collectList().block()
+                                ?.let { res -> it.render("report.html", mutableMapOf(Pair("billings", res))) }
+                                ?: run { it.status(404) }
+                        }
+
+                        post {
+                            billingService.scheduleTransactionsManual().collectList().block()
+                                ?.let { res -> it.render("report.html", mutableMapOf(Pair("billings", res))) }
+                                ?: run { it.status(404) }
                         }
                     }
 
