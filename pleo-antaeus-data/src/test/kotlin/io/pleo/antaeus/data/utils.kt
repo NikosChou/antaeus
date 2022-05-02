@@ -24,7 +24,7 @@ internal fun setupInitialData(dal: AntaeusDal) {
             )
 
             if (invoice?.status == InvoiceStatus.PENDING) {
-                dal.createBilling(invoice, invoice.status, invoice.statusMessage).block()
+                dal.createBilling(invoice = invoice).block()
             }
         }
     }

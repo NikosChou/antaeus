@@ -7,10 +7,7 @@ import io.pleo.antaeus.core.exceptions.CustomerNotFoundException
 import io.pleo.antaeus.core.exceptions.NetworkException
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.data.AntaeusDal
-import io.pleo.antaeus.models.Currency
-import io.pleo.antaeus.models.Invoice
-import io.pleo.antaeus.models.InvoiceStatus
-import io.pleo.antaeus.models.Money
+import io.pleo.antaeus.models.*
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,6 +17,7 @@ import org.junit.jupiter.params.provider.MethodSource
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
 import reactor.test.StepVerifier
+import java.time.LocalDate
 import java.util.stream.Stream
 
 class BIllingServiceTest {
@@ -37,44 +35,34 @@ class BIllingServiceTest {
 
     @Test
     fun `if payment succeed then status should be PAID`() {
-        val invoice = Invoice(
-            id = 1,
-            customerId = 1,
-            amount = Money(10.toBigDecimal(), Currency.EUR),
-            status = InvoiceStatus.PENDING,
-            statusMessage = null
-        )
+        val invoice = Invoice(1, 1, Money(10.toBigDecimal(), Currency.EUR), InvoiceStatus.PENDING)
+        val billing = Billing(1, 1, BillingStatus.IN_PROGRESS, LocalDate.now(), null)
+
         every { antaeusDal.fetchPendingInvoices() }.returns(Flux.just(invoice))
+        every { antaeusDal.createBilling(any()) }.returns(Mono.just(billing))
         every { paymentProvider.charge(any()) }.returns(true)
-        every { antaeusDal.updateInvoiceStatus(any()) }.answers { Mono.just(firstArg()) }
+        every { antaeusDal.updateBilling(any()) }.answers { Mono.just(firstArg()) }
 
         StepVerifier
             .create(this.sut.scheduleTransactionsManual())
-            .assertNext { assertThat(it.status).isEqualTo(InvoiceStatus.PAID) }
+            .assertNext { assertThat(it.status).isEqualTo(BillingStatus.SUCCESSFUL) }
             .verifyComplete()
     }
 
     @Test
     fun `if paymentProvider#charge returns false then a corresponding status and message should be available`() {
-        val invoice = Invoice(
-            id = 1,
-            customerId = 1,
-            amount = Money(10.toBigDecimal(), Currency.EUR),
-            status = InvoiceStatus.PENDING,
-            statusMessage = null
-        )
-        every { antaeusDal.fetchPendingInvoices() }.returns(
-            Flux.just(
-                invoice
-            )
-        )
+        val invoice = Invoice(1, 1, Money(10.toBigDecimal(), Currency.EUR), InvoiceStatus.PENDING)
+        val billing = Billing(1, 1, BillingStatus.IN_PROGRESS, LocalDate.now(), null)
+
+        every { antaeusDal.fetchPendingInvoices() }.returns(Flux.just(invoice))
+        every { antaeusDal.createBilling(any()) }.returns(Mono.just(billing))
         every { paymentProvider.charge(any()) }.returns(false)
-        every { antaeusDal.updateInvoiceStatus(any()) }.answers { Mono.just(firstArg()) }
+        every { antaeusDal.updateBilling(any()) }.answers { Mono.just(firstArg()) }
 
         StepVerifier
             .create(this.sut.scheduleTransactionsManual())
             .assertNext {
-                assertThat(it.status).isEqualTo(InvoiceStatus.FAILURE)
+                assertThat(it.status).isEqualTo(BillingStatus.FAILURE)
                 assertThat(it.statusMessage).isEqualTo("account balance did not allow the charge")
             }
             .verifyComplete()
@@ -82,25 +70,18 @@ class BIllingServiceTest {
 
     @Test
     fun `if a network error happened then should try again`() {
-        val invoice = Invoice(
-            id = 1,
-            customerId = 1,
-            amount = Money(10.toBigDecimal(), Currency.EUR),
-            status = InvoiceStatus.PENDING,
-            statusMessage = null
-        )
-        every { antaeusDal.fetchPendingInvoices() }.returns(
-            Flux.just(
-                invoice
-            )
-        )
+        val invoice = Invoice(1, 1, Money(10.toBigDecimal(), Currency.EUR), InvoiceStatus.PENDING)
+        val billing = Billing(1, 1, BillingStatus.IN_PROGRESS, LocalDate.now(), null)
+
+        every { antaeusDal.fetchPendingInvoices() }.returns(Flux.just(invoice))
+        every { antaeusDal.createBilling(any()) }.returns(Mono.just(billing))
         every { paymentProvider.charge(any()) }.throws(NetworkException()).andThen(true)
-        every { antaeusDal.updateInvoiceStatus(any()) }.answers { Mono.just(firstArg()) }
+        every { antaeusDal.updateBilling(any()) }.answers { Mono.just(firstArg()) }
 
         StepVerifier
             .create(this.sut.scheduleTransactionsManual())
             .assertNext {
-                assertThat(it.status).isEqualTo(InvoiceStatus.PAID)
+                assertThat(it.status).isEqualTo(BillingStatus.SUCCESSFUL)
                 assertThat(it.statusMessage).isNull()
             }
             .verifyComplete()
@@ -112,25 +93,18 @@ class BIllingServiceTest {
         toThrow: Throwable,
         message: String
     ) {
-        val invoice = Invoice(
-            id = 1,
-            customerId = 1,
-            amount = Money(10.toBigDecimal(), Currency.EUR),
-            status = InvoiceStatus.PENDING,
-            statusMessage = null
-        )
-        every { antaeusDal.fetchPendingInvoices() }.returns(
-            Flux.just(
-                invoice
-            )
-        )
+        val invoice = Invoice(1, 1, Money(10.toBigDecimal(), Currency.EUR), InvoiceStatus.PENDING)
+        val billing = Billing(1, 1, BillingStatus.IN_PROGRESS, LocalDate.now(), null)
+
+        every { antaeusDal.fetchPendingInvoices() }.returns(Flux.just(invoice))
+        every { antaeusDal.createBilling(any()) }.returns(Mono.just(billing))
         every { paymentProvider.charge(any()) }.throws(toThrow)
-        every { antaeusDal.updateInvoiceStatus(any()) }.answers { Mono.just(firstArg()) }
+        every { antaeusDal.updateBilling(any()) }.answers { Mono.just(firstArg()) }
 
         StepVerifier
             .create(this.sut.scheduleTransactionsManual().take(1))
             .assertNext {
-                assertThat(it.status).isEqualTo(InvoiceStatus.FAILURE)
+                assertThat(it.status).isEqualTo(BillingStatus.FAILURE)
                 assertThat(it.statusMessage).isEqualTo(message)
             }
             .verifyComplete()

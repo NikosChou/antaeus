@@ -1,25 +1,36 @@
 ## Antaeus
 
-Antaeus (/ænˈtiːəs/), in Greek mythology, a giant of Libya, the son of the sea god Poseidon and the Earth goddess Gaia. He compelled all strangers who were passing through the country to wrestle with him. Whenever Antaeus touched the Earth (his mother), his strength was renewed, so that even if thrown to the ground, he was invincible. Heracles, in combat with him, discovered the source of his strength and, lifting him up from Earth, crushed him to death.
+Antaeus (/ænˈtiːəs/), in Greek mythology, a giant of Libya, the son of the sea god Poseidon and the Earth goddess Gaia.
+He compelled all strangers who were passing through the country to wrestle with him. Whenever Antaeus touched the
+Earth (his mother), his strength was renewed, so that even if thrown to the ground, he was invincible. Heracles, in
+combat with him, discovered the source of his strength and, lifting him up from Earth, crushed him to death.
 
 Welcome to our challenge.
 
 ## The challenge
 
-As most "Software as a Service" (SaaS) companies, Pleo needs to charge a subscription fee every month. Our database contains a few invoices for the different markets in which we operate. Your task is to build the logic that will schedule payment of those invoices on the first of the month. While this may seem simple, there is space for some decisions to be taken and you will be expected to justify them.
+As most "Software as a Service" (SaaS) companies, Pleo needs to charge a subscription fee every month. Our database
+contains a few invoices for the different markets in which we operate. Your task is to build the logic that will
+schedule payment of those invoices on the first of the month. While this may seem simple, there is space for some
+decisions to be taken and you will be expected to justify them.
 
 ## Instructions
 
-Fork this repo with your solution. Ideally, we'd like to see your progression through commits, and don't forget to update the README.md to explain your thought process.
+Fork this repo with your solution. Ideally, we'd like to see your progression through commits, and don't forget to
+update the README.md to explain your thought process.
 
-Please let us know how long the challenge takes you. We're not looking for how speedy or lengthy you are. It's just really to give us a clearer idea of what you've produced in the time you decided to take. Feel free to go as big or as small as you want.
+Please let us know how long the challenge takes you. We're not looking for how speedy or lengthy you are. It's just
+really to give us a clearer idea of what you've produced in the time you decided to take. Feel free to go as big or as
+small as you want.
 
 ## Developing
 
 Requirements:
+
 - \>= Java 11 environment
 
-Open the project using your favorite text editor. If you are using IntelliJ, you can open the `build.gradle.kts` file and it is gonna setup the project in the IDE for you.
+Open the project using your favorite text editor. If you are using IntelliJ, you can open the `build.gradle.kts` file
+and it is gonna setup the project in the IDE for you.
 
 ### Building
 
@@ -29,7 +40,8 @@ Open the project using your favorite text editor. If you are using IntelliJ, you
 
 ### Running
 
-There are 2 options for running Anteus. You either need libsqlite3 or docker. Docker is easier but requires some docker knowledge. We do recommend docker though.
+There are 2 options for running Anteus. You either need libsqlite3 or docker. Docker is easier but requires some docker
+knowledge. We do recommend docker though.
 
 *Running Natively*
 
@@ -51,7 +63,9 @@ docker run antaeus
 ```
 
 ### App Structure
+
 The code given is structured as follows. Feel free however to modify the structure to fit your needs.
+
 ```
 ├── buildSrc
 |  | gradle build scripts and project wide dependency declarations
@@ -78,6 +92,7 @@ The code given is structured as follows. Feel free however to modify the structu
 ```
 
 ### Main Libraries and dependencies
+
 * [Exposed](https://github.com/JetBrains/Exposed) - DSL for type-safe SQL
 * [Javalin](https://javalin.io/) - Simple web framework (for REST)
 * [kotlin-logging](https://github.com/MicroUtils/kotlin-logging) - Simple logging framework for Kotlin
@@ -88,10 +103,12 @@ The code given is structured as follows. Feel free however to modify the structu
 Happy hacking 😁!
 
 # Implementation Notes
+
 * I really like the project reactor, so I added the kotlinx-reactor dependencies
-* The same for the assertj 
+* The same for the assertj
 * Tried to work only with Flux & Mono, so I can easily recover from Exceptions
 * The Billing service is called from a cron job running in a different docker container
 * The invoice statuses are now holding 2 more cases IN_PROGRESS & FAILURE
 * The invoice contains new STATUS_MESSAGE field
-* This is a quick solution, I'll create a new Table holding all information about billing date, status and exception message
+* This is a quick solution, I'll create a new Table holding all information about billing date, status and exception
+  message

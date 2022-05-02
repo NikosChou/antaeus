@@ -3,8 +3,9 @@ package io.pleo.antaeus.core.services
 import io.pleo.antaeus.core.exceptions.NetworkException
 import io.pleo.antaeus.core.external.PaymentProvider
 import io.pleo.antaeus.data.AntaeusDal
+import io.pleo.antaeus.models.Billing
+import io.pleo.antaeus.models.BillingStatus
 import io.pleo.antaeus.models.Invoice
-import io.pleo.antaeus.models.InvoiceStatus
 import mu.KotlinLogging
 import reactor.core.publisher.Flux
 import reactor.core.publisher.Mono
@@ -14,36 +15,37 @@ class BillingService(
 ) {
     private val logger = KotlinLogging.logger { BillingService::class.java.name }
 
-    fun scheduleTransactionsManual(): Flux<Invoice> {
+    fun scheduleTransactionsManual(): Flux<Billing> {
         return this.dal.fetchPendingInvoices()
-            .flatMap(this::markInvoiceInProgress, 10)
+            .flatMap(this::createBilling, 10)
             .flatMap(this::sendPayment)
-            .flatMap(this.dal::updateInvoiceStatus)
+            .flatMap(this.dal::updateBilling)
     }
 
-    private fun markInvoiceInProgress(invoice: Invoice): Mono<Invoice> {
-        return this.dal.updateInvoiceStatus(invoice.copy(status = InvoiceStatus.IN_PROGRESS))
+    private fun createBilling(invoice: Invoice): Mono<Pair<Invoice, Billing>> {
+        return this.dal.createBilling(invoice).map { Pair(invoice, it) }
     }
 
-    private fun sendPayment(invoice: Invoice): Mono<Invoice> =
-        Mono.fromCallable { paymentProvider.charge(invoice) }.map {
+    private fun sendPayment(pair: Pair<Invoice, Billing>): Mono<Billing> =
+        Mono.fromCallable { paymentProvider.charge(pair.first) }.map {
+            val billing = pair.second
             if (it) {
-                logger.info { "Payment completed successful, invoiceId: ${invoice.id}" }
-                invoice.copy(status = InvoiceStatus.PAID, statusMessage = null)
+                logger.info { "Payment completed successful, invoiceId: ${billing.invoiceId}" }
+                billing.copy(status = BillingStatus.SUCCESSFUL)
             } else {
-                logger.warn { "Payment not completed, invoiceId: ${invoice.id}, account balance insufficient" }
-                invoice.copy(
-                    status = InvoiceStatus.FAILURE, statusMessage = "account balance did not allow the charge"
+                logger.warn { "Payment not completed, invoiceId: ${billing.invoiceId}, account balance insufficient" }
+                billing.copy(
+                    status = BillingStatus.FAILURE, statusMessage = "account balance did not allow the charge"
                 )
             }
         }
             .retry(1) { it is NetworkException }
-            .onErrorResume(Exception::class.java) { copyFailureInvoice(invoice, it.message) }
+            .onErrorResume(Exception::class.java) { copyFailureInvoice(pair.second, it.message) }
 
-    private fun copyFailureInvoice(invoice: Invoice, message: String?) = Mono.fromCallable {
-        logger.error { "Error occurs for invoiceId: ${invoice.id}, message: $message" }
-        invoice.copy(
-            status = InvoiceStatus.FAILURE, statusMessage = message
+    private fun copyFailureInvoice(billing: Billing, message: String?): Mono<Billing> = Mono.fromCallable {
+        logger.error { "Error occurs for invoiceId: ${billing.invoiceId}, message: $message" }
+        billing.copy(
+            status = BillingStatus.FAILURE, statusMessage = message
         )
     }
 }

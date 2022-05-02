@@ -1,5 +1,6 @@
 package io.pleo.antaeus.data
 
+import io.pleo.antaeus.models.BillingStatus
 import io.pleo.antaeus.models.Currency
 import io.pleo.antaeus.models.InvoiceStatus
 import io.pleo.antaeus.models.Money
@@ -38,11 +39,11 @@ class AntaeusDalTest : AbstractBaseTest() {
         fun `update invoice`() {
             val updatedInvoice = sut.fetchPendingInvoices()
                 .take(1)
-                .flatMap { sut.updateInvoiceStatus(it.copy(status = InvoiceStatus.IN_PROGRESS)) }
+                .flatMap { sut.updateInvoiceStatus(it.copy(status = InvoiceStatus.PAID)) }
 
             StepVerifier
                 .create(updatedInvoice)
-                .expectNextMatches { it.status == InvoiceStatus.IN_PROGRESS }
+                .expectNextMatches { it.status == InvoiceStatus.PAID }
                 .expectComplete()
                 .verify()
         }
@@ -54,7 +55,7 @@ class AntaeusDalTest : AbstractBaseTest() {
         fun `should create billing`() {
             val invoice = sut.createInvoice(Money(1.toBigDecimal(), Currency.EUR), sut.fetchCustomer(1)!!)!!
             StepVerifier
-                .create(sut.createBilling(invoice, invoice.status, invoice.statusMessage))
+                .create(sut.createBilling(invoice))
                 .expectNextMatches { it.chargingDate.isEqual(LocalDate.now()) }
                 .verifyComplete()
         }
@@ -63,7 +64,7 @@ class AntaeusDalTest : AbstractBaseTest() {
         fun `should failed create billing if invoice id already present`() {
             val invoice = sut.fetchInvoice(1)!!
             StepVerifier
-                .create(sut.createBilling(invoice, invoice.status, invoice.statusMessage))
+                .create(sut.createBilling(invoice))
                 .expectErrorSatisfies { assertThat(it.message).containsSequence("Unique index or primary key violation") }
                 .verify()
         }
@@ -71,12 +72,49 @@ class AntaeusDalTest : AbstractBaseTest() {
         @Test
         fun `update billing`() {
             val updateFlux = sut.fetchBilling(1)
-                .flatMap { sut.updateBilling(it.copy(status = InvoiceStatus.IN_PROGRESS, statusMessage = "test")) }
+                .flatMap { sut.updateBilling(it.copy(status = BillingStatus.IN_PROGRESS, statusMessage = "test")) }
 
 
             StepVerifier
                 .create(updateFlux)
-                .expectNextMatches { it.status == InvoiceStatus.IN_PROGRESS && it.statusMessage == "test" }
+                .expectNextMatches { it.status == BillingStatus.IN_PROGRESS && it.statusMessage == "test" }
+                .expectComplete()
+                .verify()
+        }
+
+        @Test
+        fun `update billing should not update invoice status if not successful`() {
+            val updateFlux = sut.fetchBilling(1)
+                .flatMap { sut.updateBilling(it.copy(status = BillingStatus.IN_PROGRESS, statusMessage = "test")) }
+
+
+            StepVerifier
+                .create(updateFlux)
+                .expectNextMatches { it.status == BillingStatus.IN_PROGRESS && it.statusMessage == "test" }
+                .expectComplete()
+                .verify()
+
+            StepVerifier
+                .create(sut.fetchBilling(1).map { sut.fetchInvoice(it.invoiceId)!! })
+                .expectNextMatches { it.status == InvoiceStatus.PENDING }
+                .expectComplete()
+                .verify()
+        }
+
+        @Test
+        fun `update billing should update invoice status if successful`() {
+            val updateFlux = sut.fetchBilling(1)
+                .flatMap { sut.updateBilling(it.copy(status = BillingStatus.SUCCESSFUL)) }
+
+            StepVerifier
+                .create(updateFlux)
+                .expectNextMatches { it.status == BillingStatus.SUCCESSFUL }
+                .expectComplete()
+                .verify()
+
+            StepVerifier
+                .create(sut.fetchBilling(1).map { sut.fetchInvoice(it.invoiceId)!! })
+                .expectNextMatches { it.status == InvoiceStatus.PAID }
                 .expectComplete()
                 .verify()
         }
